@@ -1,0 +1,30 @@
+{
+    "environment": {
+        "AccountID": "{To be added by user}",
+        "custom": false,
+        "account_info": {
+            "Role": "{EXAMPLE}-{ENVIRONMENT}-ROLE-LIMITED",
+            "RoleArn": "arn:aws:iam::{To be added by user}:role/{EXAMPLE}-{ENVIRONMENT}-ROLE-LIMITED",
+            "RoleID": "{To be added with createRole.py}",
+            "SAML": "{EXAMPLE}-{ENVIRONMENT}-LIMITED"
+        }
+    },
+    "environment-custom": {
+        "AccountID": "{To be added by user}",
+        "custom": true,
+        "account_info": {
+            "ReadWrite": {
+                "Role": "{EXAMPLE}-{ENVIRONMENT-CUSTOM}-ROLE-LIMITED-RW",
+                "RoleArn": "arn:aws:iam::{To be added by user}:role/{EXAMPLE}-{ENVIRONMENT-CUSTOM}-ROLE-LIMITED-RW",
+                "RoleID": "{To be added with createRole.py}",
+                "SAML": "{EXAMPLE}-{ENVIRONMENT-CUSTOM}-LIMITED-RW"
+            },
+            "ReadOnly": {
+                "Role": "{EXAMPLE}-{ENVIRONMENT-CUSTOM}-ROLE-LIMITED-RO",
+                "RoleArn": "arn:aws:iam::{To be added by user}:role/{EXAMPLE}-{ENVIRONMENT-CUSTOM}-ROLE-LIMITED-RO",
+                "RoleID": "{To be added with createRole.py}",
+                "SAML": "{EXAMPLE}-{ENVIRONMENT-CUSTOM}-LIMITED-RO"
+            }
+        }
+    }
+}
