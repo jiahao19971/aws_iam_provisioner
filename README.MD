@@ -85,7 +85,8 @@ region=<which region>
                 "iam:UpdateAssumeRolePolicy",
                 "iam:UpdateRole",
                 "iam:UpdateRoleDescription",
-                "iam:UpdateSAMLProvider"
+                "iam:UpdateSAMLProvider",
+                "iam:DeletePolicyVersion"
             ],
             "Resource": "*"
         }
