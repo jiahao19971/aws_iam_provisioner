@@ -49,6 +49,13 @@ def attachRoleToPolicy(iam, role, policy_arn, policy_name):
     )
     print('Custom Policy', policy_name, 'attached to role', role)
 
+def attachPolicyToUser(iam, username, policy_arn, policy_name):
+    iam.attach_user_policy(
+        UserName=username,
+        PolicyArn=policy_arn
+    )
+    print('Custom Policy', policy_name, 'attached to user', username)
+
 def detachRoleToPolicy(iam, role, policy_arn, policy_name):
     iam.detach_role_policy(
         RoleName=role,
@@ -97,6 +104,13 @@ def listAttachedRolePolicies(iam, role, policy_name):
 
     return list_attached_role
 
+def listAttachedUserPolicies(iam, user, policy_name):
+    list_attached_user = iam.list_attached_user_policies(UserName=user)
+    list_attached_user = [policy_names["PolicyName"] for policy_names in list_attached_user["AttachedPolicies"] if policy_names["PolicyName"] == policy_name]
+
+    return list_attached_user
+
+
 def validateAction(statement, user):
     validate_action = [sid[Policies.Action.value] for sid in statement]
     validate_status = True
@@ -134,6 +148,25 @@ def validate_role_id(statement, role_id, user):
             break
 
     return validate_condition
+
+def update_policy_attach_user(iam, policy_arn, user_policy, user_policy_name, policy_str, user_name):
+    all_policy_version = iam.list_policy_versions(PolicyArn=policy_arn)
+    all_policy_version_without_default, currentPolicyVersion = getCurrentPolicyVersion(iam, all_policy_version, policy_arn)
+
+    if currentPolicyVersion != user_policy:
+        print("update needed")
+        if len(all_policy_version_without_default) == 4:
+            deleteMinPolicyVersion(iam, all_policy_version_without_default, policy_arn, user_policy_name)
+
+        createPolicyVersion(iam, policy_arn, policy_str, user_policy_name, user_name)
+
+    list_attached_role = listAttachedUserPolicies(iam, user_name, user_policy_name)
+    
+    if len(list_attached_role) == 0:
+        attachPolicyToUser(iam, user_name, policy_arn, user_policy_name)
+    else:
+        print('no changes/attached needed for', user_policy_name)
+
 
 def update_policy_attach_role(iam, policy_arn, user_policy, role_policy_name, policy_str, role_name, account_name):
     all_policy_version = iam.list_policy_versions(PolicyArn=policy_arn)

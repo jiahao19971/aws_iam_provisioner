@@ -2,6 +2,7 @@ import boto3, os, json
 from dotenv import load_dotenv
 from botocore.exceptions import ClientError
 from main_enum import Mapper
+from function import update_policy_attach_user
 from schema import validate_mapper_schema, mapper_schema
 
 load_dotenv()
@@ -41,6 +42,18 @@ try:
 except KeyError:
     master_policy = "aws-iam-provisioner"
 
+def write_to_users(field, data):
+    with open("users.json", "r") as userFile:
+        users = json.load(userFile)
+        users.update(
+            [
+                (field, data)
+            ]
+        )
+
+    with open("users.json", "w") as writeUsers:
+        json.dump(users, writeUsers, indent=4)
+        print("Updated users.json with the latest data")
 
 with open("mapper.json", "r") as master:
     policy_arn = f"arn:aws:iam::{master_account_id}:policy/{master_policy}"
@@ -48,44 +61,49 @@ with open("mapper.json", "r") as master:
 
     mapper_status = validate_mapper_schema(mapper_schema, master_file)
 
+    arn = []
+    for account_name in master_file:
+        all_account_id = master_file[account_name][Mapper.AccountID.value]
+
+        arn.append(f"arn:aws:iam::{all_account_id}:role/{iam_role}")
+
+    policy_str = createUserPermissionBoundary(arn)
+
+    user_policy = json.loads(policy_str)
+
     if mapper_status:
         try:
             iam_user = iam.get_user(
                 UserName=master_username
             )
+            try:
+                write_to_users("username", iam_user['User']['UserName'])
+                write_to_users("arn", iam_user['User']['Arn'])
+                write_to_users("userid", iam_user['User']['UserId'])
+            except Exception:
+                user_data = {
+                    "username": iam_user['User']['UserName'],
+                    "userid": iam_user['User']['UserId'],
+                    "arn": iam_user['User']['Arn'],
+                }
 
-            user_data = {
-                "username": iam_user['User']['UserName'],
-                "userid": iam_user['User']['UserId'],
-                "arn": iam_user['User']['Arn']
-            }
-
-            with open("users.json", "w") as userfile:
-                json.dump(user_data, userfile, indent=4)
+                with open("users.json", "w") as userfile:
+                    json.dump(user_data, userfile, indent=4)
 
             try:
                 print("Policy exist")
                 iam_policy = iam.get_policy(
                     PolicyArn=policy_arn
                 )
+                
+                update_policy_attach_user(iam, policy_arn, user_policy, master_policy, policy_str, master_username)
 
-                print("Attach policy boundary to user", master_username)
-                iam.attach_user_policy(
-                        UserName=master_username,
-                        PolicyArn=policy_arn
-                    )
-                print("Done attaching policy boundary to user", master_username)
             except ClientError:
                 print("Create IAM Policy")
-                arn = []
-                for account_name in master_file:
-                    all_account_id = master_file[account_name][Mapper.AccountID.value]
-
-                    arn.append(f"arn:aws:iam::{all_account_id}:role/{iam_role}")
 
                 policy = iam.create_policy(
                             PolicyName=master_policy,
-                            PolicyDocument=createUserPermissionBoundary(arn),
+                            PolicyDocument=policy_str,
                             Description='This is the policy created for aws iam provisioner to assume role in different accounts',
                             Tags=[
                                 {
@@ -94,6 +112,8 @@ with open("mapper.json", "r") as master:
                                 },
                             ]
                         )
+                
+                update_policy_attach_user(iam, policy_arn, user_policy, master_policy, policy_str, master_username)
                 
         except ClientError:
             print("create user:", master_username)
@@ -107,40 +127,44 @@ with open("mapper.json", "r") as master:
                 ]
             )
 
-            user_data = {
-                "username": users['User']['UserName'],
-                "userid": users['User']['UserId'],
-                "arn": users['User']['Arn']
-            }
+            try:
+                write_to_users("username", users['User']['UserName'])
+                write_to_users("arn", users['User']['Arn'])
+                write_to_users("userid", users['User']['UserId'])
+            except Exception:
+                user_data = {
+                    "username": users['User']['UserName'],
+                    "userid": users['User']['UserId'],
+                    "arn": users['User']['Arn'],
+                }
 
-            with open("users.json", "w") as userfile:
-                json.dump(user_data, userfile, indent=4)
-
-            iam.attach_user_policy(
-                UserName=master_username,
-                PolicyArn=policy_arn
-            )
+            update_policy_attach_user(iam, policy_arn, user_policy, master_policy, policy_str, master_username)
         finally:
-            print("Create access key")
-            secret_key = iam.create_access_key(
-                    UserName=master_username
-                )
-
-            keys_data = {
-                'UserName': secret_key["AccessKey"]["UserName"],
-                'AccessKeyId': secret_key["AccessKey"]["AccessKeyId"],
-                'Status': secret_key["AccessKey"]["Status"],
-                'SecretAccessKey': secret_key["AccessKey"]["SecretAccessKey"],
-            }
-
             with open("users.json", "r") as userfile:
                 users = json.load(userfile)
-                users["AccessKey"] = keys_data
+                if "AccessKey" not in users:
+                    if "AccessKeyId" not in users["AccessKey"]or "SecretAccessKey" not in users["AccessKey"]:
+                        if users["AccessKey"]["AccessKeyId"] == "" or users["AccessKey"]["SecretAccessKey"] == "":
+                            print("Create access key")
+                            secret_key = iam.create_access_key(
+                                    UserName=master_username
+                                )
 
-                with open("users.json", "w") as userWriter:
-                    json.dump(users, userWriter, indent=4)
+                            keys_data = {
+                                'UserName': secret_key["AccessKey"]["UserName"],
+                                'AccessKeyId': secret_key["AccessKey"]["AccessKeyId"],
+                                'Status': secret_key["AccessKey"]["Status"],
+                                'SecretAccessKey': secret_key["AccessKey"]["SecretAccessKey"],
+                            }
 
-        
+                            users["AccessKey"] = keys_data
+
+                            with open("users.json", "w") as userWriter:
+                                json.dump(users, userWriter, indent=4)
+                                
+                else:
+                    print("completed with existing aws access key and secret")
+
 
 
 
