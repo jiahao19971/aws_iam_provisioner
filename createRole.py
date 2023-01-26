@@ -88,7 +88,7 @@ def write_to_other_mapper(account_name, data):
             print("Updated mapper.json with the latest data")
 
 def createTags(organization, account_name, account_properties = ""):
-    if account_properties != "":
+    if account_properties == "":
         tags = [
             {
                 'Key': organization,
