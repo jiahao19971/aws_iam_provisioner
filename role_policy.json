@@ -24,7 +24,8 @@
                 "iam:UpdateSAMLProvider",
                 "iam:DeletePolicyVersion",
                 "iam:AttachRolePolicy",
-                "iam:DetachRolePolicy"
+                "iam:DetachRolePolicy",
+                "iam:DeletePolicy"
             ],
             "Resource": "*"
         }
