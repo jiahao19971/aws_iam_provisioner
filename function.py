@@ -204,5 +204,6 @@ def handlePolicyChange(organization, iam, user_policy, policy_str, policy_arn, p
             print("Need to detach policy", policy_name, "in", account_name)
 
             detachRoleToPolicy(iam, role, policy_arn, policy_name)
-        except ClientError:
+        except ClientError as error:
+            print(error)
             print("Skipping since policy does not exist")
