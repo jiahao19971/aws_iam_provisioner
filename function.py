@@ -172,7 +172,8 @@ def update_policy_attach_user(iam, policy_arn, user_policy, user_policy_name, po
     all_policy_version_without_default, currentPolicyVersion = getCurrentPolicyVersion(iam, all_policy_version, policy_arn)
 
     if currentPolicyVersion != user_policy:
-        logger.info("update needed")
+        message = f'Update needed for {user_policy_name}'
+        logger.info(message)
         if len(all_policy_version_without_default) == 4:
             deleteMinPolicyVersion(iam, all_policy_version_without_default, policy_arn, user_policy_name)
 
