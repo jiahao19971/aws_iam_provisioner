@@ -46,20 +46,20 @@ def createPolicy(organization, iam, policy_name, policy_str, team_name, username
     else:
         return False
 
+def attachRoleToPolicy(iam, role, policy_arn, policy_name):
+    iam.attach_role_policy(
+        RoleName=role, 
+        PolicyArn=policy_arn
+    )
+    message = f'Custom Policy {policy_name} attached to role {role}'
+    logger.info(message)
+
 def attachPolicyToUser(iam, username, policy_arn, policy_name):
     iam.attach_user_policy(
         UserName=username,
         PolicyArn=policy_arn
     )
     message = f'Custom Policy {policy_name} attached to user {username}'
-    logger.info(message)
-
-def attachRoleToPolicy(iam, role, policy_arn, policy_name):
-    iam.attach_role_policy(
-        RoleName=role, 
-        PolicyArn=policy_arn
-    )
-    message = f'Custom Policy {policy_name} attached to user {role}'
     logger.info(message)
 
 def detachRoleToPolicy(iam, role, policy_arn, policy_name):
