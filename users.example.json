@@ -9,5 +9,6 @@
         "AccessKeyId": "{To be added by user}",
         "Status": "Active",
         "SecretAccessKey": "{To be added by user}"
-    }
+    },
+    "slack-token": "example123"
 }
