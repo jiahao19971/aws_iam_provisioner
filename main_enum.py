@@ -33,3 +33,8 @@ class Mapper(Enum):
   Role = "Role"
   RoleArn = "RoleArn"
   RoleID = "RoleID"
+
+class RequiredField(Enum):
+  USER = "users.json"
+  MAPPER = "mapper.json"
+  BRANCH = "master"

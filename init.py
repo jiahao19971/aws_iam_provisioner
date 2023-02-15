@@ -1,4 +1,4 @@
-import boto3, os, json
+import boto3, os, json, logging
 from dotenv import load_dotenv
 from botocore.exceptions import ClientError
 from main_enum import Mapper
@@ -6,6 +6,9 @@ from function import update_policy_attach_user
 from schema import validate_mapper_schema, mapper_schema
 
 load_dotenv()
+
+logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.INFO)
+logger = logging.getLogger("AWSIAMProvisioner")
 
 profile = os.environ['MASTER_PROFILE']
 session = boto3.Session(profile_name=profile)
@@ -53,7 +56,7 @@ def write_to_users(field, data):
 
     with open("users.json", "w") as writeUsers:
         json.dump(users, writeUsers, indent=4)
-        print("Updated users.json with the latest data")
+        logger.info("Updated users.json with the latest data")
 
 with open("mapper.json", "r") as master:
     policy_arn = f"arn:aws:iam::{master_account_id}:policy/{master_policy}"
@@ -91,7 +94,7 @@ with open("mapper.json", "r") as master:
                     json.dump(user_data, userfile, indent=4)
 
             try:
-                print("Policy exist")
+                logger.info("Policy exist")
                 iam_policy = iam.get_policy(
                     PolicyArn=policy_arn
                 )
@@ -99,7 +102,7 @@ with open("mapper.json", "r") as master:
                 update_policy_attach_user(iam, policy_arn, user_policy, master_policy, policy_str, master_username)
 
             except ClientError:
-                print("Create IAM Policy")
+                logger.info("Create IAM Policy")
 
                 policy = iam.create_policy(
                             PolicyName=master_policy,
@@ -116,7 +119,7 @@ with open("mapper.json", "r") as master:
                 update_policy_attach_user(iam, policy_arn, user_policy, master_policy, policy_str, master_username)
                 
         except ClientError:
-            print("create user:", master_username)
+            logger.info(f"create user: {master_username}")
             users = iam.create_user(
                 UserName=master_username,
                 Tags=[
@@ -145,7 +148,7 @@ with open("mapper.json", "r") as master:
                 if "AccessKey" not in users:
                     if "AccessKeyId" not in users["AccessKey"]or "SecretAccessKey" not in users["AccessKey"]:
                         if users["AccessKey"]["AccessKeyId"] == "" or users["AccessKey"]["SecretAccessKey"] == "":
-                            print("Create access key")
+                            logger.info("Create access key")
                             secret_key = iam.create_access_key(
                                     UserName=master_username
                                 )
@@ -163,7 +166,7 @@ with open("mapper.json", "r") as master:
                                 json.dump(users, userWriter, indent=4)
                                 
                 else:
-                    print("completed with existing aws access key and secret")
+                    logger.info("completed with existing aws access key and secret")
 
 
 

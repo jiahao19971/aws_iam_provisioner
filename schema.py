@@ -180,6 +180,7 @@ user_schema = {
             },
             "required": ["AccessKeyId", "SecretAccessKey"]
         },
+        "slack-token": {"type": "string"},
     },
     "required": ["username", "userid", "arn", "AccessKey"]
 }

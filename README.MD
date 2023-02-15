@@ -214,7 +214,8 @@ The finalize version will look like this
     "AccessKey": {
         "AccessKeyId": <iam user access key>,
         "SecretAccessKey": <iam user secret key>
-    }
+    },
+    "slack-token": <optional>
 }
 ```
 
@@ -259,6 +260,9 @@ project
 │    README.md
 |    requirements.txt
 |    role_policy.json
+|    empty.py
+|    slack_bot.py
+|    slackbot_enum.py
 |    schema.py
 |    users.json (must be self created or use init script)
 |─── <environment>
