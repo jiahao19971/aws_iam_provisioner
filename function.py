@@ -114,17 +114,17 @@ def getCurrentPolicyVersion(iam, all_policy_version, policy_arn):
 
     return all_policy_version_without_default, current_policy_version
 
-def listAttachedUserPolicies(iam, user, policy_name):
-    list_attached_user = iam.list_attached_user_policies(UserName=user)
-    list_attached_user = [policy_names["PolicyName"] for policy_names in list_attached_user["AttachedPolicies"] if policy_names["PolicyName"] == policy_name]
-
-    return list_attached_user
-
 def listAttachedRolePolicies(iam, role, policy_name):
     list_attached_role = iam.list_attached_role_policies(RoleName=role)
     list_attached_role = [policy_names["PolicyName"] for policy_names in list_attached_role["AttachedPolicies"] if policy_names["PolicyName"] == policy_name]
 
     return list_attached_role
+
+def listAttachedUserPolicies(iam, user, policy_name):
+    list_attached_user = iam.list_attached_user_policies(UserName=user)
+    list_attached_user = [policy_names["PolicyName"] for policy_names in list_attached_user["AttachedPolicies"] if policy_names["PolicyName"] == policy_name]
+
+    return list_attached_user
 
 def validateAction(statement, user):
     validate_action = [sid[Policies.Action.value] for sid in statement]
