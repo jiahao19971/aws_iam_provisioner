@@ -111,6 +111,7 @@ def main():
 
                                                         with open(user, "r") as permissionset:
                                                             user_policy = json.load(permissionset)
+                                                            policy_str = json.dumps(user_policy)
 
                                                             if read_status == RWRO.ReadOnly.name:
                                                                 statement = user_policy[PermissionSet.Statement.value]
@@ -122,13 +123,13 @@ def main():
                                                                     logger.error(message)
                                                                     continue
 
-                                                            validated = sharedValidation(slack_bot, account_name, user, user_policy, role_id)
+                                                            validated = sharedValidation(slack_bot, account_name, user, user_policy, role_id, policy_str)
 
                                                             if validated:
                                                                 policy_name, policy_arn = createPolicyVar(organization, account_id, team_name.upper(), username.upper(), read_status)
 
                                                                 role = master_file[account_name][Mapper.ACCOUNTINFO.value][read_status][Mapper.Role.value]
-                                                                policy_str = json.dumps(user_policy)
+                                                                
                                                                 handlePolicyChange(organization, iam, user_policy, policy_str, policy_arn, policy_name, role, team_name, username, account_name, slack_bot)
                                         except ValueError as e:
                                             error = f"Found invalid: {e} on {user}"
@@ -150,11 +151,11 @@ def main():
 
                                                 with open(user, "r") as permissionset:
                                                     user_policy = json.load(permissionset)
+                                                    policy_str = json.dumps(user_policy)
                                                     
-                                                    validated = sharedValidation(slack_bot, account_name, user, user_policy, role_id)
+                                                    validated = sharedValidation(slack_bot, account_name, user, user_policy, role_id, policy_str)
 
                                                     if validated:
-                                                        policy_str = json.dumps(user_policy)
                                                         policy_name, policy_arn = createPolicyVar(organization, account_id, team_name.upper(), username.upper())
                                                         role = master_file[account_name][Mapper.ACCOUNTINFO.value][Mapper.Role.value]
 

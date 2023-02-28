@@ -259,8 +259,21 @@ def handlePolicyChange(
             
             logger.warning("Skipping since policy does not exist")
 
-def sharedValidation(slack_bot, account_name, user, user_policy, role_id):
+def validate_policy_length(policy_str):
+    if len(policy_str) >= 6144:
+        return False
+    else:
+        return True
+
+def sharedValidation(slack_bot, account_name, user, user_policy, role_id, policy_str):
     status = []
+    policy_len = validate_policy_length(policy_str)
+    status.append(policy_len)
+    if policy_len is False:
+        message = json.dumps(f"Failed to validate policy for {user} as policy length is greater than 6,144 character")
+        slack_bot.post_fail_message_to_slack(account_name, user, message, "validation")
+        logger.error(message)
+        
     policy_status, policy_validate_error = validate_policy_schema(policy_schema, user_policy, user)
     status.append(policy_status)
     if policy_status is False:
