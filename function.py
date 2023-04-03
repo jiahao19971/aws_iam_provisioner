@@ -77,13 +77,7 @@ def deletePolicy(iam, policy_arn, policy_name):
     message = f"Deleted policy {policy_name}"
     logger.info(message)
 
-def deleteMinPolicyVersion(iam, policy_version, policy_arn, policy_name):
-    policy_min_version = min(policy_version)
-
-    version_to_delete = f"v{policy_min_version}"
-
-    logger.info(f"Deleting {policy_name} {version_to_delete}")
-
+def deletePolicyVersion(iam, policy_arn, version_to_delete, policy_name):
     iam.delete_policy_version(
         PolicyArn=policy_arn,
         VersionId=version_to_delete
@@ -91,6 +85,15 @@ def deleteMinPolicyVersion(iam, policy_version, policy_arn, policy_name):
 
     message = f"Deleted policy version {version_to_delete} for {policy_name}"
     logger.info(message)
+
+def deleteMinPolicyVersion(iam, policy_version, policy_arn, policy_name):
+    policy_min_version = min(policy_version)
+
+    version_to_delete = f"v{policy_min_version}"
+
+    logger.info(f"Deleting {policy_name} {version_to_delete}")
+
+    deletePolicyVersion(iam, policy_arn, version_to_delete, policy_name)
 
 def createPolicyVersion(iam, policy_arn, policy_str, policy_name, role):
     iam.create_policy_version(
@@ -243,12 +246,20 @@ def handlePolicyChange(
         try:
             policy = iam.list_policy_versions(PolicyArn=policy_arn)
             list_attached_role = listAttachedRolePolicies(iam, role, policy_name)
+
+            all_policy_version = iam.list_policy_versions(PolicyArn=policy_arn)
+            all_policy_version_without_default = getCurrentPolicyVersion(iam, all_policy_version, policy_arn)
     
             if len(list_attached_role) != 0:
                 message = f"Need to detach policy {policy_name} in {account_name}"
                 logger.info(message)
                 detachRoleToPolicy(iam, role, policy_arn, policy_name)
                 slack_bot.post_success_message_to_slack(account_name, policy_name, f"Successfully detached policy {policy_name}", CHANGESTYPE.UPDATE.value)
+
+            if len(all_policy_version_without_default) > 0:
+                for policy_version in all_policy_version_without_default:
+                    version_to_delete = f"v{policy_version}"
+                    deletePolicyVersion(iam, policy_arn, version_to_delete, policy_name)
 
             if policy:
                 deletePolicy(iam, policy_arn, policy_name)
