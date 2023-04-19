@@ -258,8 +258,10 @@ def handlePolicyChange(
 
             if len(all_policy_version_without_default) > 0:
                 for policy_version in all_policy_version_without_default:
-                    version_to_delete = f"v{policy_version}"
-                    deletePolicyVersion(iam, policy_arn, version_to_delete, policy_name)
+                    for version in policy_version:
+                        if type(version) != str:
+                            version_to_delete = f"v{version}"
+                            deletePolicyVersion(iam, policy_arn, version_to_delete, policy_name)
 
             if policy:
                 deletePolicy(iam, policy_arn, policy_name)
