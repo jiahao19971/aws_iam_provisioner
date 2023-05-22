@@ -129,7 +129,7 @@ def createTags(organization, account_name, account_properties = ""):
 
 with open("users.json", "r") as user_info:
     users_data = json.load(user_info)
-    users_status = validate_user_schema(user_schema, users_data)
+    users_status, _ = validate_user_schema(user_schema, users_data)
     if users_status is True: 
         session = boto3.Session(
             aws_access_key_id=users_data['AccessKey']['AccessKeyId'],
@@ -139,7 +139,7 @@ with open("users.json", "r") as user_info:
 
         with open("mapper.json", "r") as Masterfile:
             master = json.load(Masterfile)
-            mapper_status = validate_mapper_schema(mapper_schema, master)
+            mapper_status, _ = validate_mapper_schema(mapper_schema, master)
             if mapper_status is True:
                 for account_name in master:
                     account_id = master[account_name][Mapper.AccountID.value]

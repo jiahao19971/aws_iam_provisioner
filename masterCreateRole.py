@@ -4,11 +4,12 @@ from botocore.exceptions import ClientError
 from main_enum import Mapper
 from function import update_policy_attach_role
 from client import assumeRole
-
+from empty import Empty
 load_dotenv()
 
 profile = os.environ['MASTER_PROFILE']
 session = boto3.Session(profile_name=profile)
+slack_bot = Empty()
 
 try:
     role_name = os.environ["ROLE_NAME"]
@@ -61,7 +62,7 @@ with open("mapper.json", "r") as master:
             )
             try:
                 user_policy = json.loads(policy_str)
-                update_policy_attach_role(iam, policy_arn, user_policy, role_policy_name, policy_str, role_name, account_name)
+                update_policy_attach_role(iam, policy_arn, user_policy, role_policy_name, policy_str, role_name, account_name, slack_bot)
 
             except ClientError:
                 iam_create = iam.create_policy(
@@ -117,7 +118,7 @@ with open("mapper.json", "r") as master:
 
                 try:
                     user_policy = json.loads(policy_str)
-                    update_policy_attach_role(iam, policy_arn, user_policy, role_policy_name, policy_str, role_name, account_name)
+                    update_policy_attach_role(iam, policy_arn, user_policy, role_policy_name, policy_str, role_name, account_name, slack_bot)
                 except ClientError:
                     iam_create = iam.create_policy(
                         PolicyName=role_policy_name, 

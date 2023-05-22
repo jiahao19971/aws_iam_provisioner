@@ -46,20 +46,20 @@ def createPolicy(organization, iam, policy_name, policy_str, team_name, username
     else:
         return False
 
-def attachRoleToPolicy(iam, role, policy_arn, policy_name):
-    iam.attach_role_policy(
-        RoleName=role, 
-        PolicyArn=policy_arn
-    )
-    message = f'Custom Policy {policy_name} attached to role {role}'
-    logger.info(message)
-
 def attachPolicyToUser(iam, username, policy_arn, policy_name):
     iam.attach_user_policy(
         UserName=username,
         PolicyArn=policy_arn
     )
     message = f'Custom Policy {policy_name} attached to user {username}'
+    logger.info(message)
+
+def attachRoleToPolicy(iam, role, policy_arn, policy_name):
+    iam.attach_role_policy(
+        RoleName=role, 
+        PolicyArn=policy_arn
+    )
+    message = f'Custom Policy {policy_name} attached to user {role}'
     logger.info(message)
 
 def detachRoleToPolicy(iam, role, policy_arn, policy_name):
@@ -117,17 +117,17 @@ def getCurrentPolicyVersion(iam, all_policy_version, policy_arn):
 
     return all_policy_version_without_default, current_policy_version
 
-def listAttachedRolePolicies(iam, role, policy_name):
-    list_attached_role = iam.list_attached_role_policies(RoleName=role)
-    list_attached_role = [policy_names["PolicyName"] for policy_names in list_attached_role["AttachedPolicies"] if policy_names["PolicyName"] == policy_name]
-
-    return list_attached_role
-
 def listAttachedUserPolicies(iam, user, policy_name):
     list_attached_user = iam.list_attached_user_policies(UserName=user)
     list_attached_user = [policy_names["PolicyName"] for policy_names in list_attached_user["AttachedPolicies"] if policy_names["PolicyName"] == policy_name]
 
     return list_attached_user
+
+def listAttachedRolePolicies(iam, role, policy_name):
+    list_attached_role = iam.list_attached_role_policies(RoleName=role)
+    list_attached_role = [policy_names["PolicyName"] for policy_names in list_attached_role["AttachedPolicies"] if policy_names["PolicyName"] == policy_name]
+
+    return list_attached_role
 
 def validateAction(statement, user):
     validate_action = [sid[Policies.Action.value] for sid in statement]
@@ -175,8 +175,7 @@ def update_policy_attach_user(iam, policy_arn, user_policy, user_policy_name, po
     all_policy_version_without_default, currentPolicyVersion = getCurrentPolicyVersion(iam, all_policy_version, policy_arn)
 
     if currentPolicyVersion != user_policy:
-        message = f'Update needed for {user_policy_name}'
-        logger.info(message)
+        logger.info("update needed")
         if len(all_policy_version_without_default) == 4:
             deleteMinPolicyVersion(iam, all_policy_version_without_default, policy_arn, user_policy_name)
 
@@ -286,7 +285,7 @@ def sharedValidation(slack_bot, account_name, user, user_policy, role_id, policy
         message = json.dumps(f"Failed to validate policy for {user} as policy length is greater than 6,144 character")
         slack_bot.post_fail_message_to_slack(account_name, user, message, "validation")
         logger.error(message)
-        
+
     policy_status, policy_validate_error = validate_policy_schema(policy_schema, user_policy, user)
     status.append(policy_status)
     if policy_status is False:
@@ -312,6 +311,8 @@ def sharedValidation(slack_bot, account_name, user, user_policy, role_id, policy
         message = f"Incorrect role_id for user: {user}"
         slack_bot.post_fail_message_to_slack(account_name, user, message, "validation")
         logger.error(message)
+
+    
 
     if False in set(status): return False
     else: return True

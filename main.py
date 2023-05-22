@@ -129,7 +129,6 @@ def main():
                                                                 policy_name, policy_arn = createPolicyVar(organization, account_id, team_name.upper(), username.upper(), read_status)
 
                                                                 role = master_file[account_name][Mapper.ACCOUNTINFO.value][read_status][Mapper.Role.value]
-                                                                
                                                                 handlePolicyChange(organization, iam, user_policy, policy_str, policy_arn, policy_name, role, team_name, username, account_name, slack_bot)
                                         except ValueError as e:
                                             error = f"Found invalid: {e} on {user}"
