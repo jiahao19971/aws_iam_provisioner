@@ -1,7 +1,10 @@
 from botocore.exceptions import ClientError
-import re
+import re, json, logging
 from main_enum import Policies, PermissionSet, ConditionMust, ConditionUserID
+from schema import policy_schema, validate_policy_schema
+from slackbot_enum import CHANGESTYPE
 
+logger = logging.getLogger("AWSIAMProvisioner")
 
 def createPolicyVar(organization, account_id, team_name, username, rwro = False):
     policy_name = f"{organization.upper()}-{team_name.upper()}-{username.upper()}-POLICY"                                        
@@ -37,51 +40,60 @@ def createPolicy(organization, iam, policy_name, policy_str, team_name, username
     )
 
     if iam_create:
-        print('Custom Policy', policy_name, 'created.')
+        message = f'Custom Policy {policy_name} created.'
+        logger.info(message)
         return iam_create
     else:
         return False
-
-def attachRoleToPolicy(iam, role, policy_arn, policy_name):
-    iam.attach_role_policy(
-        RoleName=role, 
-        PolicyArn=policy_arn
-    )
-    print('Custom Policy', policy_name, 'attached to role', role)
 
 def attachPolicyToUser(iam, username, policy_arn, policy_name):
     iam.attach_user_policy(
         UserName=username,
         PolicyArn=policy_arn
     )
-    print('Custom Policy', policy_name, 'attached to user', username)
+    message = f'Custom Policy {policy_name} attached to user {username}'
+    logger.info(message)
+
+def attachRoleToPolicy(iam, role, policy_arn, policy_name):
+    iam.attach_role_policy(
+        RoleName=role, 
+        PolicyArn=policy_arn
+    )
+    message = f'Custom Policy {policy_name} attached to user {role}'
+    logger.info(message)
 
 def detachRoleToPolicy(iam, role, policy_arn, policy_name):
     iam.detach_role_policy(
         RoleName=role,
         PolicyArn=policy_arn
     )
-    print("Detaching policy", policy_name, "from role", role)
+    message = f"Detaching policy {policy_name} from role {role}"
+    logger.info(message)
 
 def deletePolicy(iam, policy_arn, policy_name):
     iam.delete_policy(
         PolicyArn=policy_arn
     )
-    print("Delete policy", policy_name)
+    message = f"Deleted policy {policy_name}"
+    logger.info(message)
+
+def deletePolicyVersion(iam, policy_arn, version_to_delete, policy_name):
+    iam.delete_policy_version(
+        PolicyArn=policy_arn,
+        VersionId=version_to_delete
+    )
+
+    message = f"Deleted policy version {version_to_delete} for {policy_name}"
+    logger.info(message)
 
 def deleteMinPolicyVersion(iam, policy_version, policy_arn, policy_name):
     policy_min_version = min(policy_version)
 
     version_to_delete = f"v{policy_min_version}"
 
-    print(f"Delete policy version {version_to_delete}")
+    logger.info(f"Deleting {policy_name} {version_to_delete}")
 
-    iam.delete_policy_version(
-        PolicyArn=policy_arn,
-        VersionId=version_to_delete
-    )
-
-    print("Deleted version", version_to_delete, "for policy", policy_name)
+    deletePolicyVersion(iam, policy_arn, version_to_delete, policy_name)
 
 def createPolicyVersion(iam, policy_arn, policy_str, policy_name, role):
     iam.create_policy_version(
@@ -89,7 +101,8 @@ def createPolicyVersion(iam, policy_arn, policy_str, policy_name, role):
         PolicyDocument=policy_str,
         SetAsDefault=True
     )
-    print("updated policy", policy_name, "on role", role)
+    message = f"Updated policy {policy_name} on role {role}"
+    logger.info(message)
 
 def getCurrentPolicyVersion(iam, all_policy_version, policy_arn):
     all_policy_version_without_default = [int(plc["VersionId"].replace("v", "")) for plc in all_policy_version["Versions"] if plc["IsDefaultVersion"] is False]
@@ -104,17 +117,17 @@ def getCurrentPolicyVersion(iam, all_policy_version, policy_arn):
 
     return all_policy_version_without_default, current_policy_version
 
-def listAttachedRolePolicies(iam, role, policy_name):
-    list_attached_role = iam.list_attached_role_policies(RoleName=role)
-    list_attached_role = [policy_names["PolicyName"] for policy_names in list_attached_role["AttachedPolicies"] if policy_names["PolicyName"] == policy_name]
-
-    return list_attached_role
-
 def listAttachedUserPolicies(iam, user, policy_name):
     list_attached_user = iam.list_attached_user_policies(UserName=user)
     list_attached_user = [policy_names["PolicyName"] for policy_names in list_attached_user["AttachedPolicies"] if policy_names["PolicyName"] == policy_name]
 
     return list_attached_user
+
+def listAttachedRolePolicies(iam, role, policy_name):
+    list_attached_role = iam.list_attached_role_policies(RoleName=role)
+    list_attached_role = [policy_names["PolicyName"] for policy_names in list_attached_role["AttachedPolicies"] if policy_names["PolicyName"] == policy_name]
+
+    return list_attached_role
 
 def validateAction(statement, user):
     validate_action = [sid[Policies.Action.value] for sid in statement]
@@ -123,12 +136,14 @@ def validateAction(statement, user):
         if type(action) == list:
             check = [ act for act in action if re.search("(.*):(\\*|Delete|Update|Put)", act) != None ]
             if len(check) > 0:
-                print("Found (*|Delete|Update|Put) in Permission set", check, "in", user)
+                error = f"Found (*|Delete|Update|Put) in Permission set {check} in {user}"
+                logger.error(error)
                 validate_status = False 
                 break                                                                       
         else:
             if re.search("(.*):(\\*|Delete|Update|Put)", action) != None:
-                print("Found (*|Delete|Update|Put) in Permission set", action, "in", user)
+                error = f"Found (*|Delete|Update|Put) in Permission set {action} in {user}"
+                logger.error(error)
                 validate_status = False
                 break
 
@@ -137,9 +152,9 @@ def validateAction(statement, user):
 def validate_role_id(statement, role_id, user):
     validate_condition = True
     for state in statement:
-        Policies
         if Policies.Condition.value not in state:
-            print("Condition not found in policies, please add it in for", user)
+            error = "Condition not found in policies, please add it in for", user
+            logger.error(error)
             validate_condition = False
             break
         
@@ -148,7 +163,8 @@ def validate_role_id(statement, role_id, user):
         state_validate = [condition for condition in conditions if re.search(f"{role_id}:(.*)",condition) == None]
 
         if len(state_validate) > 0:
-            print("suppose", role_id, "but received", state_validate, "for", user)
+            error = "suppose", role_id, "but received", state_validate, "for", user
+            logger.error(error)
             validate_condition = False
             break
 
@@ -159,7 +175,7 @@ def update_policy_attach_user(iam, policy_arn, user_policy, user_policy_name, po
     all_policy_version_without_default, currentPolicyVersion = getCurrentPolicyVersion(iam, all_policy_version, policy_arn)
 
     if currentPolicyVersion != user_policy:
-        print("update needed")
+        logger.info("update needed")
         if len(all_policy_version_without_default) == 4:
             deleteMinPolicyVersion(iam, all_policy_version_without_default, policy_arn, user_policy_name)
 
@@ -170,49 +186,133 @@ def update_policy_attach_user(iam, policy_arn, user_policy, user_policy_name, po
     if len(list_attached_role) == 0:
         attachPolicyToUser(iam, user_name, policy_arn, user_policy_name)
     else:
-        print('no changes/attached needed for', user_policy_name)
+        message = f'No changes/attached needed for {user_policy_name}'
+        logger.info(message)
 
-def update_policy_attach_role(iam, policy_arn, user_policy, role_policy_name, policy_str, role_name, account_name):
+def update_policy_attach_role(iam, policy_arn, user_policy, role_policy_name, policy_str, role_name, account_name, slack_bot):
     all_policy_version = iam.list_policy_versions(PolicyArn=policy_arn)
     all_policy_version_without_default, currentPolicyVersion = getCurrentPolicyVersion(iam, all_policy_version, policy_arn)
 
     if currentPolicyVersion != user_policy:
-        print("update needed")
+        message = f'Update needed for {role_policy_name} in {account_name}'
+        logger.info(message)
         if len(all_policy_version_without_default) == 4:
+            policy_min_version = min(all_policy_version_without_default)
             deleteMinPolicyVersion(iam, all_policy_version_without_default, policy_arn, role_policy_name)
+            slack_bot.post_success_message_to_slack(account_name, role_policy_name, f"Successfully deleted policy {role_policy_name} v{policy_min_version}", CHANGESTYPE.DELETE.value)
 
         createPolicyVersion(iam, policy_arn, policy_str, role_policy_name, role_name)
+        slack_bot.post_success_message_to_slack(account_name, role_policy_name, f"Successfully updated policy {role_policy_name}", CHANGESTYPE.UPDATE.value)
 
     list_attached_role = listAttachedRolePolicies(iam, role_name, role_policy_name)
     
     if len(list_attached_role) == 0:
         attachRoleToPolicy(iam, role_name, policy_arn, role_policy_name)
+        slack_bot.post_success_message_to_slack(account_name, role_policy_name, f"Successfully attached policy {role_policy_name} to role {role_name}", CHANGESTYPE.UPDATE.value)
     else:
-        print('no changes/attached needed for', role_policy_name, "in", account_name)
+        message = f'No changes/attached needed for {role_policy_name} in {account_name}'
+        logger.info(message)
 
-def handlePolicyChange(organization, iam, user_policy, policy_str, policy_arn, policy_name, role, team_name, username, account_name):
+def handlePolicyChange(
+    organization, 
+    iam, 
+    user_policy, 
+    policy_str, 
+    policy_arn, 
+    policy_name, 
+    role, 
+    team_name, 
+    username, 
+    account_name,
+    slack_bot
+):
     if len(user_policy[PermissionSet.Statement.value]) > 0:
         try:
-            update_policy_attach_role(iam, policy_arn, user_policy, policy_name, policy_str, role, account_name)
-        except ClientError as e:
+            update_policy_attach_role(iam, policy_arn, user_policy, policy_name, policy_str, role, account_name, slack_bot)
+        except ClientError:
             try:
+                slack_bot.post_success_message_to_slack(account_name, policy_name, f"Successfully create policy {policy_name}", CHANGESTYPE.CREATE.value)
                 iam_create = createPolicy(organization, iam, policy_name, policy_str, team_name, username, account_name)
                 if iam_create:
+                    slack_bot.post_success_message_to_slack(account_name, policy_name, f"Successfully attached policy {policy_name}", CHANGESTYPE.UPDATE.value)
                     attachRoleToPolicy(iam, role, policy_arn, policy_name)
 
             except ClientError as e:
-                print("Failed to create policy in", account_name, "for" , policy_name, "with error message", e)
+                error = f"Failed to create policy in {account_name} for {policy_name} with error message {e}" 
+                logger.error(error)
+                slack_bot.post_fail_message_to_slack(account_name, policy_name, message, CHANGESTYPE.CREATE.value)
     else:
         try:
             policy = iam.list_policy_versions(PolicyArn=policy_arn)
             list_attached_role = listAttachedRolePolicies(iam, role, policy_name)
+
+            all_policy_version = iam.list_policy_versions(PolicyArn=policy_arn)
+            all_policy_version_without_default = getCurrentPolicyVersion(iam, all_policy_version, policy_arn)
     
             if len(list_attached_role) != 0:
-                print("Need to detach policy", policy_name, "in", account_name)
+                message = f"Need to detach policy {policy_name} in {account_name}"
+                logger.info(message)
                 detachRoleToPolicy(iam, role, policy_arn, policy_name)
+                slack_bot.post_success_message_to_slack(account_name, policy_name, f"Successfully detached policy {policy_name}", CHANGESTYPE.UPDATE.value)
+
+            if len(all_policy_version_without_default) > 0:
+                for policy_version in all_policy_version_without_default:
+                    for version in policy_version:
+                        if type(version) != str:
+                            version_to_delete = f"v{version}"
+                            deletePolicyVersion(iam, policy_arn, version_to_delete, policy_name)
 
             if policy:
                 deletePolicy(iam, policy_arn, policy_name)
+                slack_bot.post_success_message_to_slack(account_name, policy_name, f"Successfully deleted policy {policy_name}", CHANGESTYPE.DELETE.value)
+                
         except ClientError as error:
-            print(error)
-            print("Skipping since policy does not exist")
+            logger.error(error)
+            
+            logger.warning("Skipping since policy does not exist")
+
+def validate_policy_length(policy_str):
+    if len(policy_str) >= 6144:
+        return False
+    else:
+        return True
+
+def sharedValidation(slack_bot, account_name, user, user_policy, role_id, policy_str):
+    status = []
+    policy_len = validate_policy_length(policy_str)
+    status.append(policy_len)
+    if policy_len is False:
+        message = json.dumps(f"Failed to validate policy for {user} as policy length is greater than 6,144 character")
+        slack_bot.post_fail_message_to_slack(account_name, user, message, "validation")
+        logger.error(message)
+
+    policy_status, policy_validate_error = validate_policy_schema(policy_schema, user_policy, user)
+    status.append(policy_status)
+    if policy_status is False:
+        message = json.dumps(f"Failed to validate policy with error {policy_validate_error}")
+        slack_bot.post_fail_message_to_slack(account_name, user, message, "validation")
+        logger.error(message)
+
+    statement = user_policy[PermissionSet.Statement.value]
+
+    validate_sid = [sid[Policies.Sid.value] for sid in statement if Policies.Sid.value in sid]
+    sid_length = len(set(validate_sid)) == len(validate_sid)
+    status.append(sid_length)
+
+    if sid_length is False:
+        message = f"Problem with the Sid: {user}"
+        slack_bot.post_fail_message_to_slack(account_name, user, message, "validation")
+        logger.error(message)
+        
+
+    validate_condition = validate_role_id(statement, role_id, user)
+    status.append(validate_condition)
+    if validate_condition is False:
+        message = f"Incorrect role_id for user: {user}"
+        slack_bot.post_fail_message_to_slack(account_name, user, message, "validation")
+        logger.error(message)
+
+    
+
+    if False in set(status): return False
+    else: return True

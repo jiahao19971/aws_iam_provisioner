@@ -54,7 +54,7 @@ def validate_policy_schema(policy_schema, user_policy, user):
         print("Failed to validate schema", user, "with error", validationErrors)
         validate_status = False
 
-    return validate_status
+    return validate_status, validationErrors
 
 def validate_mapper_schema(mapper_schema, user_mapper):
     validate_status = True
@@ -75,7 +75,7 @@ def validate_mapper_schema(mapper_schema, user_mapper):
         print("Failed to validate mapper with error", validationErrors)
         validate_status = False
 
-    return validate_status
+    return validate_status, validationErrors
 
 def validate_user_schema(user_schema, user_data):
     validate_status = True
@@ -88,7 +88,7 @@ def validate_user_schema(user_schema, user_data):
         print("Failed to validate users with error", validationErrors)
         validate_status = False
 
-    return validate_status
+    return validate_status, validationErrors
 
 policy_schema = {
     "type": "object",
@@ -180,6 +180,7 @@ user_schema = {
             },
             "required": ["AccessKeyId", "SecretAccessKey"]
         },
+        "slack-token": {"type": "string"},
     },
     "required": ["username", "userid", "arn", "AccessKey"]
 }
