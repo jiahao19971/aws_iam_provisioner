@@ -224,7 +224,7 @@ The finalize version will look like this
 
 ## How to use the script
 First create the iam user for the main account that we will be using it to assume role in different environment account.
-Do not that this can be skip if u already have the user and access key setup. Just make sure to create a file called [users.json](#usersjson) and add in the information needed
+Do note that this can be skip if u already have the user and access key setup. Just make sure to create a file called [users.json](#usersjson) and add in the information needed
 Make sure that this is run just once or else each time u run, it will generate a new access id and secret.
 `python init.py`
 
